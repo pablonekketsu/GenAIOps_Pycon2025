@@ -36,7 +36,11 @@ for run in runs:
         "prompt_version": params.get("prompt_version"),
         "chunk_size": int(params.get("chunk_size", 0)),
         "chunk_overlap": int(params.get("chunk_overlap", 0)),
-        "lc_is_correct": metrics.get("lc_is_correct", 0)
+        "correctness_score": metrics.get("correctness_score", metrics.get("lc_is_correct", 0)),
+        "relevance_score": metrics.get("relevance_score", 0),
+        "coherence_score": metrics.get("coherence_score", 0),
+        "toxicity_score": metrics.get("toxicity_score", 0),
+        "harmfulness_score": metrics.get("harmfulness_score", 0),
     })
 
 df = pd.DataFrame(data)
@@ -46,14 +50,20 @@ st.subheader("📋 Resultados individuales por pregunta")
 st.dataframe(df)
 
 # Agrupación para análisis
-grouped = df.groupby(["prompt_version", "chunk_size"]).agg(
-    promedio_correcto=("lc_is_correct", "mean"),
-    preguntas=("pregunta", "count")
-).reset_index()
+criteria_columns = [
+    "correctness_score",
+    "relevance_score",
+    "coherence_score",
+    "toxicity_score",
+    "harmfulness_score",
+]
+grouped = df.groupby(["prompt_version", "chunk_size"])[criteria_columns].mean().reset_index()
+grouped["preguntas"] = df.groupby(["prompt_version", "chunk_size"]).size().values
 
 st.subheader("📊 Desempeño agrupado por configuración")
 st.dataframe(grouped)
 
 # Gráfico
 grouped["config"] = grouped["prompt_version"] + " | " + grouped["chunk_size"].astype(str)
-st.bar_chart(grouped.set_index("config")["promedio_correcto"])
+selected_criterion = st.selectbox("Criterio para el gráfico:", criteria_columns)
+st.bar_chart(grouped.set_index("config")[selected_criterion])
